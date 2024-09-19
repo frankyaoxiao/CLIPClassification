@@ -5,17 +5,14 @@ from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
 from pytorch_lightning.loggers import WandbLogger
 
 class CLIPClassifier(L.LightningModule):
-    def __init__(self):
+    def __init__(self, lr):
         super().__init__()
         self.save_hyperparameters()
-        self.processor = CLIPImageProcessor.from_pretrained("openai/clip-vit-base-patch32")
+        self.processor = CLIPImageProcessor.from_pretrained("openai/clip-vit-base-patch32", do_rescale=False)
         self.encoder = CLIPVisionModelWithProjection.from_pretrained("openai/clip-vit-base-patch32")
 
         # Freeze the encoder and processor
         for param in self.encoder.parameters():
-            param.requires_grad = False
-
-        for param in self.processor.parameters():
             param.requires_grad = False
 
         # A lightweight neural network to turn the embeddings into logits in our 101 classes
@@ -26,14 +23,16 @@ class CLIPClassifier(L.LightningModule):
                 nn.Linear(256, 128),
                 nn.ReLU(),
                 nn.Linear(128, 101),
-                nn.Softmax(dim = 1)
                 )
 
         self.loss = nn.CrossEntropyLoss()
+        self.lr = lr
 
     def forward(self, x):
-        inputs = self.processor(images = x, return_tenors = "pt")
-        embeds = self.encoder(**inputs).image_embeds
+        with torch.no_grad():
+            inputs = self.processor(images = x, return_tensors = "pt")
+            inputs.to(device=torch.device("cuda"))
+            embeds = self.encoder(**inputs).image_embeds
         results = self.classifier(embeds)
         return results
 
@@ -57,6 +56,9 @@ class CLIPClassifier(L.LightningModule):
         loss = self.loss(predictions, y)
         self.log("val_loss", loss)
         return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.lr)
 
 
 
