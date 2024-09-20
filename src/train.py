@@ -27,7 +27,7 @@ test_dataloader = DataLoader(test_data, batch_size=batch_size, num_workers=worke
 val_dataloader = DataLoader(val_data, batch_size=batch_size, num_workers=workers)
 model = CLIPClassifier(lr)
 trainer = L.Trainer(
-        logger=WandbLogger(name="clip"),
+        logger=WandbLogger(log_model="all", name="clip"),
         max_epochs=num_epochs,
         )
 

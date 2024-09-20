@@ -29,10 +29,9 @@ class CLIPClassifier(L.LightningModule):
         self.lr = lr
 
     def forward(self, x):
-        with torch.no_grad():
-            inputs = self.processor(images = x, return_tensors = "pt")
-            inputs.to(device=torch.device("cuda"))
-            embeds = self.encoder(**inputs).image_embeds
+        inputs = self.processor(images = x, return_tensors = "pt")
+        inputs.to(device=torch.device("cuda"))
+        embeds = self.encoder(**inputs).image_embeds
         results = self.classifier(embeds)
         return results
 
